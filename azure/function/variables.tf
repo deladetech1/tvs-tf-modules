@@ -97,18 +97,6 @@ variable "keyvault_id" {
   default = null
 }
 
-# Application data storage account — AzureWebJobsStorage (queues/tables/blobs)
-variable "app_data_storage_id" {
-  type    = string
-  default = null
-}
-
-# Function deployment storage account — for the run-from-package zip
-variable "function_deployment_storage_id" {
-  type    = string
-  default = null
-}
-
 # Application Insights — for sending custom telemetry via AAD
 variable "app_insight_id" {
   type    = string

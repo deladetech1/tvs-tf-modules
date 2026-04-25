@@ -23,7 +23,7 @@ resource "azurerm_function_app_flex_consumption" "app_flex_consumption" {
   
   app_settings = var.app_settings
   storage_user_assigned_identity_id = var.storage_user_assigned_identity_id
-  # storage_access_key = var.storage_access_key # Enable for storage access key
+  storage_access_key                = var.storage_access_key
 
   identity {
     type         = var.identity_type
@@ -39,24 +39,15 @@ resource "azurerm_function_app_flex_consumption" "app_flex_consumption" {
 locals {
   system_principal_id = azurerm_function_app_flex_consumption.app_flex_consumption.identity[0].principal_id
 
-  # Each entry creates one azurerm_role_assignment when the corresponding *_id
-  # variable is non-null. Keys are arbitrary stable strings used for the for_each.
+  # The system MI only needs roles for Key Vault references and Application
+  # Insights telemetry. AzureWebJobsStorage and the deployment package storage
+  # are accessed via connection-string / access-key auth, so storage roles for
+  # the system MI aren't necessary.
   system_mi_role_grants = merge(
     var.keyvault_id == null ? {} : {
       kv_secrets_user = {
         scope = var.keyvault_id
         role  = "Key Vault Secrets User"
-      }
-    },
-    var.app_data_storage_id == null ? {} : {
-      app_data_blob_contributor  = { scope = var.app_data_storage_id, role = "Storage Blob Data Contributor" }
-      app_data_queue_contributor = { scope = var.app_data_storage_id, role = "Storage Queue Data Contributor" }
-      app_data_table_contributor = { scope = var.app_data_storage_id, role = "Storage Table Data Contributor" }
-    },
-    var.function_deployment_storage_id == null ? {} : {
-      fds_blob_owner = {
-        scope = var.function_deployment_storage_id
-        role  = "Storage Blob Data Owner"
       }
     },
     var.app_insight_id == null ? {} : {
