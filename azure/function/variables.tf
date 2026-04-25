@@ -86,10 +86,12 @@ variable "storage_user_assigned_identity_id" {
   default = null
 }
 
-# Tells App Service which user-assigned managed identity to use when resolving
-# @Microsoft.KeyVault(...) app settings. Required when identity_type is
-# "UserAssigned" only — otherwise resolution fails with MSINotEnabled.
-variable "key_vault_reference_identity_id" {
+# Optional Key Vault resource ID. When provided, the module grants the function's
+# *system-assigned* managed identity the "Key Vault Secrets User" role on this
+# vault, so @Microsoft.KeyVault(...) app settings can resolve. App Service uses
+# the system identity by default for KV references — `keyVaultReferenceIdentity`
+# is not supported on azurerm_function_app_flex_consumption (Flex tier).
+variable "keyvault_id" {
   type    = string
   default = null
 }
