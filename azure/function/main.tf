@@ -24,7 +24,9 @@ resource "azurerm_function_app_flex_consumption" "app_flex_consumption" {
   app_settings = var.app_settings
   storage_user_assigned_identity_id = var.storage_user_assigned_identity_id
   # storage_access_key = var.storage_access_key # Enable for storage access key
-  
+
+  key_vault_reference_identity_id = var.key_vault_reference_identity_id
+
   identity {
     type         = var.identity_type
     identity_ids = var.identity_ids

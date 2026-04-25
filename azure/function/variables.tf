@@ -86,6 +86,14 @@ variable "storage_user_assigned_identity_id" {
   default = null
 }
 
+# Tells App Service which user-assigned managed identity to use when resolving
+# @Microsoft.KeyVault(...) app settings. Required when identity_type is
+# "UserAssigned" only — otherwise resolution fails with MSINotEnabled.
+variable "key_vault_reference_identity_id" {
+  type    = string
+  default = null
+}
+
 variable "storage_access_key" {
   type = string
   default = null
