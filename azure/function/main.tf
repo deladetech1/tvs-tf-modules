@@ -36,13 +36,41 @@ resource "azurerm_function_app_flex_consumption" "app_flex_consumption" {
 
 }
 
-# Grant the function's system-assigned MI access to the Key Vault so App Service
-# can resolve @Microsoft.KeyVault(...) app settings. Only created when the
-# caller passes a keyvault_id and the function actually has a system identity
-# (identity_type contains "SystemAssigned").
-resource "azurerm_role_assignment" "kv_secrets_user_for_system_mi" {
-  count                = var.keyvault_id == null ? 0 : 1
-  scope                = var.keyvault_id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_function_app_flex_consumption.app_flex_consumption.identity[0].principal_id
+locals {
+  system_principal_id = azurerm_function_app_flex_consumption.app_flex_consumption.identity[0].principal_id
+
+  # Each entry creates one azurerm_role_assignment when the corresponding *_id
+  # variable is non-null. Keys are arbitrary stable strings used for the for_each.
+  system_mi_role_grants = merge(
+    var.keyvault_id == null ? {} : {
+      kv_secrets_user = {
+        scope = var.keyvault_id
+        role  = "Key Vault Secrets User"
+      }
+    },
+    var.app_data_storage_id == null ? {} : {
+      app_data_blob_contributor  = { scope = var.app_data_storage_id, role = "Storage Blob Data Contributor" }
+      app_data_queue_contributor = { scope = var.app_data_storage_id, role = "Storage Queue Data Contributor" }
+      app_data_table_contributor = { scope = var.app_data_storage_id, role = "Storage Table Data Contributor" }
+    },
+    var.function_deployment_storage_id == null ? {} : {
+      fds_blob_owner = {
+        scope = var.function_deployment_storage_id
+        role  = "Storage Blob Data Owner"
+      }
+    },
+    var.app_insight_id == null ? {} : {
+      ai_metrics_publisher = {
+        scope = var.app_insight_id
+        role  = "Monitoring Metrics Publisher"
+      }
+    },
+  )
+}
+
+resource "azurerm_role_assignment" "system_mi_grants" {
+  for_each             = local.system_mi_role_grants
+  scope                = each.value.scope
+  role_definition_name = each.value.role
+  principal_id         = local.system_principal_id
 }

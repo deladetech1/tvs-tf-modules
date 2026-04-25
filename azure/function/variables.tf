@@ -41,7 +41,7 @@ variable "storage_authentication_type" {
 
 variable "identity_type" {
   type = string
-  default = "UserAssigned"
+  default = "SystemAssigned"
 }
 
 variable "runtime_name" {
@@ -65,7 +65,8 @@ variable "maximum_instance_count" {
 }
 
 variable "identity_ids" {
-  type = list(string)
+  type    = list(string)
+  default = []
 }
 
 variable "app_settings" {
@@ -86,12 +87,30 @@ variable "storage_user_assigned_identity_id" {
   default = null
 }
 
-# Optional Key Vault resource ID. When provided, the module grants the function's
-# *system-assigned* managed identity the "Key Vault Secrets User" role on this
-# vault, so @Microsoft.KeyVault(...) app settings can resolve. App Service uses
-# the system identity by default for KV references — `keyVaultReferenceIdentity`
-# is not supported on azurerm_function_app_flex_consumption (Flex tier).
+# When provided, the module grants the function's system-assigned MI the roles
+# it needs on the corresponding shared resource. Each is independent so callers
+# can omit any that don't apply.
+
+# Key Vault — for @Microsoft.KeyVault(...) app setting resolution
 variable "keyvault_id" {
+  type    = string
+  default = null
+}
+
+# Application data storage account — AzureWebJobsStorage (queues/tables/blobs)
+variable "app_data_storage_id" {
+  type    = string
+  default = null
+}
+
+# Function deployment storage account — for the run-from-package zip
+variable "function_deployment_storage_id" {
+  type    = string
+  default = null
+}
+
+# Application Insights — for sending custom telemetry via AAD
+variable "app_insight_id" {
   type    = string
   default = null
 }
