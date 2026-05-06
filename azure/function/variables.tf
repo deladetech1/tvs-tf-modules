@@ -51,7 +51,7 @@ variable "runtime_name" {
 
 variable "runtime_version" {
   type = string
-  default = "3.12"
+  default = "3.13"
 }
 
 variable "instance_memory_in_mb" {
