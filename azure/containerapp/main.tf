@@ -1,3 +1,11 @@
+locals {
+  # Keep the user-assigned identity attached, but optionally also enable the
+  # system-assigned identity. ACA Key Vault *reference* secrets fail to resolve
+  # via the user-assigned identity in this environment, so we resolve them with
+  # the system-assigned identity instead (per-secret `identity = "System"`).
+  identity_type = var.enable_system_assigned_identity ? "SystemAssigned, UserAssigned" : "UserAssigned"
+}
+
 resource "azurerm_container_app" "containerapp" {
   name                         = var.container_app_name
   container_app_environment_id = var.container_app_environment_id
@@ -10,7 +18,7 @@ resource "azurerm_container_app" "containerapp" {
     server = var.container_registry_host_name
   }
   identity {
-    type         = "UserAssigned"
+    type         = local.identity_type
     identity_ids = [var.user_assigned_identity_id]
   }
 
@@ -20,7 +28,10 @@ resource "azurerm_container_app" "containerapp" {
       name                = secret.value["name"]
       value               = lookup(secret.value, "value", null)
       key_vault_secret_id = lookup(secret.value, "key_vault_secret_id", null)
-      identity = var.user_assigned_identity_id
+      # Per-secret identity override. Defaults to the user-assigned identity for
+      # backward compatibility; pass `identity = "System"` for KV-reference
+      # secrets that should resolve via the system-assigned identity.
+      identity = lookup(secret.value, "identity", var.user_assigned_identity_id)
     }
   }
 

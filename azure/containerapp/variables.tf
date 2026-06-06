@@ -63,11 +63,20 @@ variable "user_assigned_identity_id" {
   type = string
 }
 
+variable "enable_system_assigned_identity" {
+  type        = bool
+  default     = false
+  description = "Also attach a system-assigned identity (kept alongside the user-assigned one). Used to resolve Key Vault reference secrets, which fail via the user-assigned identity in ACA."
+}
+
 variable "secrets" {
   type = list(object({
     name                = string
     value               = optional(string)
     key_vault_secret_id = optional(string)
+    # Identity used to resolve a Key Vault reference secret. Pass "System" to use
+    # the system-assigned identity; omit to default to the user-assigned identity.
+    identity            = optional(string)
   }))
 }
 
