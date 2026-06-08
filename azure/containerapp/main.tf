@@ -17,6 +17,12 @@ locals {
 
   # Default identity for KV-reference secrets when a secret doesn't set its own.
   default_secret_identity = local.use_uami ? var.user_assigned_identity_id : "System"
+
+  # Pull from ACR using admin username/password when provided. This avoids the
+  # system-assigned-identity AcrPull bootstrap deadlock (the system identity only
+  # exists after the app is created, so it can't be granted AcrPull before its
+  # first revision needs to pull). KV references still use the system identity.
+  use_acr_admin = var.acr_admin_username != null && var.acr_admin_username != ""
 }
 
 resource "azurerm_container_app" "containerapp" {
@@ -26,13 +32,36 @@ resource "azurerm_container_app" "containerapp" {
   revision_mode                = var.revision_mode
   workload_profile_name        = var.workload_profile_name
   tags = var.tags
-  registry {
-    identity = local.registry_identity
-    server = var.container_registry_host_name
+
+  # Registry auth: ACR admin username/password when provided, else managed identity.
+  dynamic "registry" {
+    for_each = local.use_acr_admin ? [] : [1]
+    content {
+      identity = local.registry_identity
+      server   = var.container_registry_host_name
+    }
   }
+  dynamic "registry" {
+    for_each = local.use_acr_admin ? [1] : []
+    content {
+      server               = var.container_registry_host_name
+      username             = var.acr_admin_username
+      password_secret_name = "acr-admin-password"
+    }
+  }
+
   identity {
     type         = local.identity_type
     identity_ids = local.identity_ids
+  }
+
+  # ACR admin password, referenced by the registry block above.
+  dynamic "secret" {
+    for_each = local.use_acr_admin ? [1] : []
+    content {
+      name  = "acr-admin-password"
+      value = var.acr_admin_password
+    }
   }
 
   dynamic "secret" {

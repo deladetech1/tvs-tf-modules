@@ -65,6 +65,18 @@ variable "user_assigned_identity_id" {
   description = "User-assigned identity to attach. Leave null to run system-assigned-only (registry pulls and KV references then use the system identity)."
 }
 
+variable "acr_admin_username" {
+  type        = string
+  default     = null
+  description = "ACR admin username. When set, the registry pulls with admin creds instead of a managed identity (avoids the system-identity AcrPull bootstrap)."
+}
+
+variable "acr_admin_password" {
+  type      = string
+  default   = null
+  sensitive = true
+}
+
 variable "enable_system_assigned_identity" {
   type        = bool
   default     = false
