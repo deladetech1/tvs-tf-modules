@@ -60,7 +60,9 @@ variable "ingress_transport" {
 }
 
 variable "user_assigned_identity_id" {
-  type = string
+  type        = string
+  default     = null
+  description = "User-assigned identity to attach. Leave null to run system-assigned-only (registry pulls and KV references then use the system identity)."
 }
 
 variable "enable_system_assigned_identity" {
