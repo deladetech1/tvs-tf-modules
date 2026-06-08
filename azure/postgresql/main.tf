@@ -13,3 +13,22 @@ resource "azurerm_postgresql_flexible_server" "postgresql" {
   auto_grow_enabled = var.auto_grow_enabled
   tags = var.tags
 }
+
+# "Allow public access from any Azure service" (0.0.0.0). Lets Azure-hosted
+# runners create per-app roles via the postgresql provider. Restrict to specific
+# ranges in prod via var.allowed_ip_ranges instead.
+resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
+  count            = var.allow_azure_services ? 1 : 0
+  name             = "AllowAzureServices"
+  server_id        = azurerm_postgresql_flexible_server.postgresql.id
+  start_ip_address = "0.0.0.0"
+  end_ip_address   = "0.0.0.0"
+}
+
+resource "azurerm_postgresql_flexible_server_firewall_rule" "ranges" {
+  for_each         = var.allowed_ip_ranges
+  name             = each.key
+  server_id        = azurerm_postgresql_flexible_server.postgresql.id
+  start_ip_address = each.value.start_ip
+  end_ip_address   = each.value.end_ip
+}

@@ -58,3 +58,18 @@ variable "auto_grow_enabled" {
 variable "subscription_id" {
   type = string
 }
+
+variable "allow_azure_services" {
+  description = "Add a 0.0.0.0 firewall rule allowing access from Azure services (needed so Azure-hosted runners can create per-app DB roles)."
+  type        = bool
+  default     = false
+}
+
+variable "allowed_ip_ranges" {
+  description = "Explicit firewall rules: name => { start_ip, end_ip }."
+  type = map(object({
+    start_ip = string
+    end_ip   = string
+  }))
+  default = {}
+}
