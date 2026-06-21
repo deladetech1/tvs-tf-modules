@@ -111,12 +111,4 @@ resource "azurerm_container_app" "containerapp" {
       }
     }
   }
-
-  # The CI pipeline owns the running image (`az containerapp update --image ...`).
-  # Terraform creates the app with var.container_image (a pullable bootstrap image
-  # when the real one isn't in ACR yet) and then ignores image drift, so applies
-  # don't revert the pipeline's deploy.
-  lifecycle {
-    ignore_changes = [template[0].container[0].image]
-  }
 }
