@@ -10,6 +10,17 @@ resource "postgresql_role" "app" {
   name     = var.role_name
   login    = true
   password = random_password.role.result
+
+  # Group membership is owned by the postgresql-app-group module, which adds
+  # every app role to tvs_app_<env> for cross-schema access. This resource does
+  # not set `roles`, so without this the provider reads that live membership as
+  # drift and REVOKES it on the next apply — the app keeps authenticating but
+  # loses the shared schemas, surfacing as "permission denied for schema
+  # core_platform" on the first query. The two units then fight: the role unit
+  # revokes, the group unit re-grants.
+  lifecycle {
+    ignore_changes = [roles]
+  }
 }
 
 # Least-privilege: connect to the app's database and create its own schemas
