@@ -38,3 +38,22 @@ variable "schemas" {
   description = "Schemas the apps share (owned by the migrator; group gets USAGE + DML)"
   type        = list(string)
 }
+
+variable "revoke_public" {
+  description = <<-EOT
+    Revoke every database-level privilege from PUBLIC.
+
+    PostgreSQL grants CONNECT to PUBLIC on every new database, so without this
+    ANY role in the cluster can open a session on it. On a shared pool that is
+    merely untidy -- the apps are meant to reach it. On a SILO database it
+    removes the point of the tier: a tenant given "its own database" on a shared
+    server is still reachable by every other app's credential.
+
+    Measured on dev before this existed: mystoreguard_dev connected to
+    silo-shared-test with no grant at all.
+
+    Defaults false so existing callers are unchanged; silo units set it true.
+  EOT
+  type        = bool
+  default     = false
+}

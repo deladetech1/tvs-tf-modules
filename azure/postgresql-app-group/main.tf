@@ -114,3 +114,24 @@ resource "postgresql_grant_role" "members" {
   role       = each.value
   grant_role = postgresql_role.group.name
 }
+
+# Strip PUBLIC's implicit CONNECT. An empty privileges list is how the provider
+# expresses a revoke.
+#
+# Ordering matters: this must run AFTER the migrator and group grants above, or
+# the revoke would take their CONNECT with it -- PUBLIC is not a role you remove
+# from, it is a default you override, and the explicit grants have to be in place
+# first for anything to still be able to reach the database.
+resource "postgresql_grant" "revoke_public_database" {
+  count = var.revoke_public ? 1 : 0
+
+  database    = var.database_name
+  role        = "public"
+  object_type = "database"
+  privileges  = []
+
+  depends_on = [
+    postgresql_grant.migrator_db,
+    postgresql_grant.group_db,
+  ]
+}
