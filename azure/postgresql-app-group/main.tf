@@ -62,15 +62,48 @@ resource "postgresql_grant" "schema_usage" {
   depends_on  = [postgresql_schema.shared]
 }
 
+locals {
+  full_dml = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]
+
+  # Each extra table group of a restricted schema, keyed "<schema>/<group>".
+  restricted_extended = merge([for s, r in var.restricted_schemas : {
+    for g, e in r.extended : "${s}/${g}" => merge(e, { schema = s })
+  }]...)
+}
+
 # Group: DML on existing tables in each schema.
+#
+# A schema in var.restricted_schemas is granted on the NAMED tables only, with its
+# own privilege set, instead of on every table in the schema. Same address either
+# way, so restricting a schema replaces this one grant in place (destroy, then
+# create) rather than racing a separate resource.
 resource "postgresql_grant" "tables" {
   for_each    = toset(var.schemas)
   database    = var.database_name
   role        = postgresql_role.group.name
   schema      = each.value
   object_type = "table"
-  privileges  = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]
+  objects     = contains(keys(var.restricted_schemas), each.value) ? var.restricted_schemas[each.value].tables : []
+  privileges  = contains(keys(var.restricted_schemas), each.value) ? var.restricted_schemas[each.value].privileges : local.full_dml
   depends_on  = [postgresql_schema.shared]
+}
+
+# Restricted schemas: the tables that get a different privilege set from the
+# schema's base one (e.g. the only tables an app may DELETE from). Disjoint from
+# the base table list -- two grants on one table would each read the other's
+# privileges back as drift.
+#
+# After postgresql_grant.tables: replacing a schema-wide grant revokes ALL on
+# every table in the schema, which would otherwise wipe these.
+resource "postgresql_grant" "restricted_tables" {
+  for_each    = local.restricted_extended
+  database    = var.database_name
+  role        = postgresql_role.group.name
+  schema      = each.value.schema
+  object_type = "table"
+  objects     = each.value.tables
+  privileges  = each.value.privileges
+  depends_on  = [postgresql_grant.tables]
 }
 
 # Group: usage on existing sequences in each schema.
@@ -92,8 +125,9 @@ resource "postgresql_default_privileges" "tables" {
   role        = postgresql_role.group.name
   schema      = each.value
   object_type = "table"
-  privileges  = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]
-  depends_on  = [postgresql_grant_role.admin_in_migrator, postgresql_schema.shared]
+  # A restricted schema's future tables get its base set, never the full DML.
+  privileges = contains(keys(var.restricted_schemas), each.value) ? var.restricted_schemas[each.value].privileges : local.full_dml
+  depends_on = [postgresql_grant_role.admin_in_migrator, postgresql_schema.shared]
 }
 
 # FUTURE sequences the migrator creates -> usage to the group.

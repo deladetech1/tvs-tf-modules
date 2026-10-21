@@ -57,3 +57,26 @@ variable "revoke_public" {
   type        = bool
   default     = false
 }
+
+variable "restricted_schemas" {
+  description = <<-EOT
+    Schemas whose table privileges are narrower than the full DML every other
+    shared schema gets, because migrations grant them table by table.
+
+    For each: `privileges` on the named `tables` and on every future table the
+    migrator creates there; `extended` names other groups of tables with their
+    own sets (e.g. the only tables the app may DELETE from). Every table appears
+    in exactly one group. A table named nowhere gets nothing from this module.
+
+    Default {} keeps every schema on the schema-wide full-DML grant.
+  EOT
+  type = map(object({
+    privileges = list(string)
+    tables     = list(string)
+    extended = optional(map(object({
+      tables     = list(string)
+      privileges = list(string)
+    })), {})
+  }))
+  default = {}
+}
