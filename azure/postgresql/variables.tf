@@ -73,3 +73,38 @@ variable "allowed_ip_ranges" {
   }))
   default = {}
 }
+variable "maintenance_window" {
+  description = "Custom maintenance window (UTC): day_of_week 0=Sunday..6, start_hour 0-23, start_minute 0-59. null = Azure's own schedule (any time)."
+  type = object({
+    day_of_week  = number
+    start_hour   = number
+    start_minute = optional(number, 0)
+  })
+  default = null
+
+  validation {
+    condition = var.maintenance_window == null ? true : (
+      var.maintenance_window.day_of_week >= 0 && var.maintenance_window.day_of_week <= 6 &&
+      var.maintenance_window.start_hour >= 0 && var.maintenance_window.start_hour <= 23 &&
+      var.maintenance_window.start_minute >= 0 && var.maintenance_window.start_minute <= 59
+    )
+    error_message = "maintenance_window: day_of_week 0-6, start_hour 0-23, start_minute 0-59."
+  }
+}
+
+variable "high_availability_mode" {
+  description = "null (no standby), \"ZoneRedundant\" or \"SameZone\". Not available on Burstable (B_) SKUs."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.high_availability_mode == null ? true : contains(["ZoneRedundant", "SameZone"], var.high_availability_mode)
+    error_message = "high_availability_mode must be null, ZoneRedundant or SameZone."
+  }
+}
+
+variable "standby_availability_zone" {
+  description = "Standby zone for ZoneRedundant HA (must differ from postgresql_zone)."
+  type        = string
+  default     = "2"
+}
